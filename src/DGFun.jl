@@ -1,5 +1,8 @@
 module DGFun
 
-# package code goes here
+
+include("io.jl")
+include("plot.jl")
+include("graph_algs.jl")
 
 end # module
