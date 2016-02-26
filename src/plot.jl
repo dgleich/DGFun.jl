@@ -26,57 +26,67 @@ end
 export showfig
 
 
-function graphplot(A,xy)
-    (ei,ej) = findnz(triu(A))
-    lx = [xy[ei,1]';xy[ej,1]';NaN*ones(1,length(ei))]
-    ly = [xy[ei,2]';xy[ej,2]';NaN*ones(1,length(ei))]
-    lines = PyPlot.plot(lx,ly)
-    PyPlot.axis("off")
-    PyPlot.setp(lines,alpha=0.5,color=[0.,0.,0.],zorder=0)
-end
-
 function vectorcmap(x,cmap)
     # map all the entries of x to 1:length(cmap)
     xmin,xmax = extrema(x)
+    if xmin==xmax
+        xmax = xmin + 1.
+    end
     ncolors = size(cmap,1)
     return [ cmap[round(Int64,(ncolors-1)*(x[i]-xmin) / (xmax-xmin))+1] for i=1:length(x) ]
 end
-function cgraphplot(A,xy;opacity::Float64=0.5,lw=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt)
+function _apply_alpha(c::Color, alpha::Float64)
+    d = convert(RGB,c)
+    return RGBA(d.r,d.g,d.b,alpha)
+end
+
+function _prep_graph(A,xy)
     n = size(A,1)
-    (ei,ej) = findnz(A)
-    xmin,xmax = extrema(xy[:,1])
-    ymin,ymax = extrema(xy[:,2])
+    (ei,ej) = findnz(triu(A))
     lx = [xy[ei,1]';xy[ej,1]']
     ly = [xy[ei,2]';xy[ej,2]']
     len = size(lx,2)
     points = [[(lx[1,i], ly[1,i]), (lx[2,i], ly[2,i])] for i in 1:len];
     all_edges = line(points);
+    
+    return all_edges
+end
+
+function cgraphplot(A,xy;
+    edgeopacity::Float64=0.5,edgewidth=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt,
+    nodeopacity::Float64=1.,edgecolor=colorant"black",nodecolor=colorant"black",
+    )
+    
+    xmin,xmax = extrema(xy[:,1])
+    ymin,ymax = extrema(xy[:,2])
+    all_edges = _prep_graph(A, xy)
+    
     # compose is centered on the upper left ... so xmax is the upper
     area = UnitBox(xmin,ymax,xmax-xmin,ymin-ymax,leftpad=1mm,rightpad=1mm,toppad=1mm,bottompad=1mm)
+    
+    edgecolor = _apply_alpha(edgecolor,edgeopacity)
 
     graph = compose(context(),
-        all_edges, linewidth(lw), fill(nothing), stroke(colorant"black"), strokeopacity(opacity))
+        all_edges, linewidth(edgewidth), fill(nothing), stroke(edgecolor))
     all_nodes = circle(xy[:,1],xy[:,2],[radius])
+    nodecolor = _apply_alpha(nodecolor,nodeopacity)
     if filled
-        plot = compose(context(), all_nodes, fill(colorant"black"), stroke(nothing))
+        plot = compose(context(), all_nodes, fill(nodecolor), stroke(nothing))
     else
-        plot = compose(context(), all_nodes, fill(colorant"white"), stroke(colorant"black"), linewidth(nodestroke))
+        plot = compose(context(), all_nodes, fill(colorant"white"), stroke(nodecolor), linewidth(nodestroke))
     end
     return compose(context(units=area), plot, graph)
 end
-function cgraphplot(A,xy,s,c,cmap;opacity::Float64=0.5)
-    n = size(A,1)
-    (ei,ej) = findnz(A)
+
+function cgraphplot(A,xy,s,c,cmap;edgeopacity::Float64=0.5)
+    
     xmin,xmax = extrema(xy[:,1])
     ymin,ymax = extrema(xy[:,2])
-    lx = [xy[ei,1]';xy[ej,1]']
-    ly = [xy[ei,2]';xy[ej,2]']
-    len = size(lx,2)
-    points = [[(lx[1,i], ly[1,i]), (lx[2,i], ly[2,i])] for i in 1:len];
-    all_edges = line(points);
-
+    all_edges = _prep_graph(A, xy)
+    
     area = UnitBox(xmin,ymax,xmax-xmin,ymin-ymax,leftpad=1mm,rightpad=1mm,toppad=1mm,bottompad=1mm)
-    graph = compose(context(), all_edges, linewidth(0.5pt), fill(nothing), stroke(colorant"black"), strokeopacity(opacity))
+    
+    graph = compose(context(), all_edges, linewidth(0.5pt), fill(nothing), strokeopacity(edgeopacity), stroke(colorant"black"))
     all_nodes = circle(xy[:,1],xy[:,2],s)
     ccmap = [ RGB(cmap[i,1],cmap[i,2],cmap[i,3]) for i=1:size(cmap,1)]
     plot = compose(context(), all_nodes, fill(vectorcmap(c,ccmap)), stroke(nothing))
@@ -84,15 +94,11 @@ function cgraphplot(A,xy,s,c,cmap;opacity::Float64=0.5)
 end
 
 function cgraphplot(A,xy,set::Set{Int};opacity::Float64=0.5,lw=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt,notsetscale=0.5,highlight::Set{Int}=Set{Int}(),highlightscale=1.5,setcolor::Color=colorant"red",highlightcolor=colorant"blue")
-    n = size(A,1)
-    (ei,ej) = findnz(A)
+
     xmin,xmax = extrema(xy[:,1])
     ymin,ymax = extrema(xy[:,2])
-    lx = [xy[ei,1]';xy[ej,1]']
-    ly = [xy[ei,2]';xy[ej,2]']
-    len = size(lx,2)
-    points = [[(lx[1,i], ly[1,i]), (lx[2,i], ly[2,i])] for i in 1:len];
-    all_edges = line(points);
+    all_edges = _prep_graph(A, xy)
+
     # compose is centered on the upper left ... so xmax is the upper
     area = UnitBox(xmin,ymax,xmax-xmin,ymin-ymax,leftpad=1mm,rightpad=1mm,toppad=1mm,bottompad=1mm)
 
@@ -115,7 +121,7 @@ function cgraphplot(A,xy,set::Set{Int};opacity::Float64=0.5,lw=0.5pt,radius::Flo
     return compose(context(units=area), plotnot, plotset, plothigh, graph)
 end
 
-export graphplot, cgraphplot
+export cgraphplot
 
 _magma_data = [0.001462 0.000466 0.013866;
                0.002258 0.001295 0.018331;
