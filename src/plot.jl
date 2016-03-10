@@ -52,9 +52,26 @@ function _prep_graph(A,xy)
     return all_edges
 end
 
+"""
+cgraphplot
+
+    cgraphplot(A,xy)
+    cgraphplot(A,xy,rad)
+    cgraphplot(A,xy,s,c)
+    cgraphplot(A,xy,S)
+    
+    options
+    
+        edgewidth
+        edgeopacity
+        nodeopacity
+        
+"""        
+
 function cgraphplot(A,xy;
     edgeopacity::Float64=0.5,edgewidth=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt,
     nodeopacity::Float64=1.,edgecolor=colorant"black",nodecolor=colorant"black",
+    fillcolor=colorant"white"
     )
     
     xmin,xmax = extrema(xy[:,1])
@@ -63,17 +80,16 @@ function cgraphplot(A,xy;
     
     # compose is centered on the upper left ... so xmax is the upper
     area = UnitBox(xmin,ymax,xmax-xmin,ymin-ymax,leftpad=1mm,rightpad=1mm,toppad=1mm,bottompad=1mm)
-    
-    edgecolor = _apply_alpha(edgecolor,edgeopacity)
 
     graph = compose(context(),
-        all_edges, linewidth(edgewidth), fill(nothing), stroke(edgecolor))
+        all_edges, linewidth(edgewidth), fill(nothing), strokeopacity(edgeopacity), stroke(edgecolor))
     all_nodes = circle(xy[:,1],xy[:,2],[radius])
-    nodecolor = _apply_alpha(nodecolor,nodeopacity)
     if filled
-        plot = compose(context(), all_nodes, fill(nodecolor), stroke(nothing))
+        plot = compose(context(), all_nodes, fillopacity(nodeopacity), fill(nodecolor), stroke(nothing))
     else
-        plot = compose(context(), all_nodes, fill(colorant"white"), stroke(nodecolor), linewidth(nodestroke))
+        plot = compose(context(), all_nodes, strokeopacity(nodeopacity), fillopacity(nodeopacity), 
+            fill(colorant"white"), 
+            stroke(nodecolor), linewidth(nodestroke))
     end
     return compose(context(units=area), plot, graph)
 end
@@ -93,7 +109,13 @@ function cgraphplot(A,xy,s,c,cmap;edgeopacity::Float64=0.5)
     return compose(context(units=area), plot, graph)
 end
 
-function cgraphplot(A,xy,set::Set{Int};opacity::Float64=0.5,lw=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt,notsetscale=0.5,highlight::Set{Int}=Set{Int}(),highlightscale=1.5,setcolor::Color=colorant"red",highlightcolor=colorant"blue")
+function cgraphplot(A,xy,set::Set{Int};
+    edgeopacity::Float64=0.5,nodeopacity::Float64=1.,
+    lw=0.5pt,radius::Float64=0.75,filled=true,nodestroke=0.75pt,notsetscale=0.5,
+    highlight::Set{Int}=Set{Int}(),highlightscale=1.5,
+    setcolor::Color=colorant"orangered",highlightcolor::Color=colorant"firebrick"
+    #setcolor::Color=colorant"limegreen",highlightcolor::Color=colorant"royalblue"
+    )
 
     xmin,xmax = extrema(xy[:,1])
     ymin,ymax = extrema(xy[:,2])
@@ -103,19 +125,20 @@ function cgraphplot(A,xy,set::Set{Int};opacity::Float64=0.5,lw=0.5pt,radius::Flo
     area = UnitBox(xmin,ymax,xmax-xmin,ymin-ymax,leftpad=1mm,rightpad=1mm,toppad=1mm,bottompad=1mm)
 
     graph = compose(context(),
-        all_edges, linewidth(lw), fill(nothing), stroke(colorant"black"), strokeopacity(opacity))
+        all_edges, linewidth(lw), fill(nothing), strokeopacity(edgeopacity), stroke(colorant"black"))
     #all_nodes = circle(xy[:,1],xy[:,2],[radius])
     setverts = collect(set)
-    notverts = collect(setdiff(1:n,set)) # not set vertices
+    notverts = collect(setdiff(1:size(A,1),set)) # not set vertices
     highverts = collect(highlight)
     
     set_nodes = circle(xy[setverts,1],xy[setverts,2],[radius])
     not_nodes = circle(xy[notverts,1],xy[notverts,2],[notsetscale*radius])
     high_nodes = circle(xy[highverts,1],xy[highverts,2],[highlightscale*radius])
 
-    plotnot = compose(context(), not_nodes, fill(colorant"white"), stroke(colorant"black"), linewidth(nodestroke))
+    plotnot = compose(context(), not_nodes, fillopacity(nodeopacity), strokeopacity(nodeopacity), 
+        fill(colorant"white"), stroke(colorant"black"), linewidth(nodestroke))
+        
     plotset = compose(context(), set_nodes, fill(setcolor), stroke(nothing))
-    
     plothigh = compose(context(), high_nodes, stroke(highlightcolor), fill(nothing),linewidth(1.5pt))
 
     return compose(context(units=area), plotnot, plotset, plothigh, graph)
