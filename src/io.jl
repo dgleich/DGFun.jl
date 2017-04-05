@@ -83,13 +83,15 @@ function readSMATtoEdges(filename::AbstractString, indextype::Type)
   return edges
 end
 
+export readSMAT
+
 #=
 
 readSMATtoEdges
 readSMATtoCSR(filename, )
 function readSMATtoCSR(filename::AbstractString)
 
-export readSMAT
+=#
 
 function writeSMAT{T}(filename::AbstractString, A::SparseMatrixCSC{T,Int}; values::Bool=true)
     open(filename, "w") do outfile
