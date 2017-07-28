@@ -50,6 +50,32 @@ function _read_compressed(filename::AbstractString)
   end
 end
 
+"""
+This function reads a list of edges, which is generally some variant of the
+form:
+  i j val
+or
+  i j
+
+"""
+function load_edges_list(lineiter; indextype::Type = Int, valuetype::Type = Union{}, header::Bool=false, offset::Int = 1)
+  if header
+    hdr = collect(Base.Iterators.take(lines, 1))[1] # get the first line
+  end
+  ei = Vector{indextype}()
+  ej = similar(ei)
+  ev = Vector{valuetype}()
+  for line in lineiter
+    parts = split(line)
+    push!(ei, parse(indextype, parts[1])+offset)
+    push!(ej, parse(indextype, parts[2])+offset)
+    if valuetype != Union{}
+      push!(ev, parse(valuetype, parts[3]))
+    end
+  end
+  return ei, ej, ev
+end
+
 function readSMATtoEdges(filename::AbstractString, indextype::Type, valuetype::Type)
   lines = _read_compressed(filename)
   header = collect(take(lines, 1))[1] # get the first line

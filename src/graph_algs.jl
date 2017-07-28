@@ -2,6 +2,7 @@
 import Base.LinAlg.checksquare
 import Base.LinAlg.BlasFloat
 import MathProgBase
+import Clp
 
 
 """
@@ -62,7 +63,7 @@ function stmincut{T<:BlasFloat}(A::SparseMatrixCSC{T,Int64}, s::Int64, t::Int64)
            et zm zm]
     beq = [zeros(m); 1.; 0.]
 
-    sol = MathProgBase.linprog(f, Aeq, '=', beq, 0., 1.)
+    sol = MathProgBase.linprog(f, Aeq, '=', beq, 0., 1., Clp.ClpSolver())
     x = sol.sol[1:n]
     cutval = sol.objval
 
